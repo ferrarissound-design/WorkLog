@@ -1,0 +1,73 @@
+name: Release
+
+# Actions タブ →「Release」→「Run workflow」から手動で実行する
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "バージョン（例: 1.0.0）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate version
+        shell: pwsh
+        run: |
+          if ($env:VERSION -notmatch '^\d+\.\d+\.\d+$') {
+            Write-Error "バージョンは 1.0.0 の形式で入力してください（入力値: $env:VERSION）"
+            exit 1
+          }
+
+      - name: Fail if tag already exists
+        shell: pwsh
+        run: |
+          $tag = "v$env:VERSION"
+          $found = git ls-remote --tags origin "refs/tags/$tag"
+          if ($found) {
+            Write-Error "タグ $tag はすでに存在します。別のバージョンを指定してください。"
+            exit 1
+          }
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish src/WorkLog/WorkLog.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:Version=$env:VERSION `
+            -o publish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item publish/WorkLog.exe "WorkLog-v$env:VERSION.exe"
+          Get-Item "WorkLog-v$env:VERSION.exe" | Select-Object Name, Length
+
+      - name: Create tag and GitHub Release
+        shell: pwsh
+        run: |
+          $tag = "v$env:VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag $tag $env:GITHUB_SHA
+          git push origin $tag
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gh release create $tag "WorkLog-v$env:VERSION.exe" `
+            --title "WorkLog $tag" `
+            --generate-notes `
+            --verify-tag
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

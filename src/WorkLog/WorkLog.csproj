@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>WorkLog</AssemblyName>
+    <RootNamespace>WorkLog</RootNamespace>
+    <Product>WorkLog</Product>
+    <Description>作業ログ自動記録</Description>
+    <!-- リリース時は workflow から -p:Version=x.y.z で上書きする -->
+    <Version>0.0.0-dev</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- 配布形式：自己完結・単一ファイル (win-x64) -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- 圧縮すると起動時に展開した分だけメモリを食うので無効のまま -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+
+    <!-- 常駐アプリ向けの軽量化設定 -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TieredPGO>false</TieredPGO>
+    <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+</Project>
