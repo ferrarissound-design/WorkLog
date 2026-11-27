@@ -3,7 +3,8 @@ name: Build
 # push / PR ごとにビルドできるか確認する。作った exe は Artifacts からも落とせる（試用向け）
 on:
   push:
-  pull_request:
+    branches: ["**"]
+    tags-ignore: ["**"]
 
 permissions:
   contents: read

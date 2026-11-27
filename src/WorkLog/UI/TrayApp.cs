@@ -46,6 +46,8 @@ public sealed class TrayApp : ApplicationContext
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(summaryItem);
         menu.Items.Add(_pauseItem);
+        menu.Items.Add(new ToolStripMenuItem("放置プロジェクト", null, (_, _) => { ShowSummary(); _summaryForm?.ShowNeglectTab(); }));
+        menu.Items.Add(new ToolStripMenuItem("CSV出力…", null, (_, _) => ShowCsv()));
         menu.Items.Add(new ToolStripMenuItem("設定", null, (_, _) => ShowSettings()));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("終了", null, (_, _) => ExitApp()));
@@ -128,7 +130,7 @@ public sealed class TrayApp : ApplicationContext
     {
         var entries = _tracker.SnapshotToday(out _);
         var total = Stats.Total(entries.Where(e => e.Project != ProjectDetector.ExcludedLabel));
-        var top = Stats.ByProject(entries).FirstOrDefault();
+        var top = Stats.ByProject(entries.Where(e => e.Project != ProjectDetector.ExcludedLabel)).FirstOrDefault();
         string state = _tracker.State switch
         {
             TrackerState.Paused => "一時停止中",
@@ -145,14 +147,40 @@ public sealed class TrayApp : ApplicationContext
         }
     }
 
+    private SummaryForm? _summaryForm;
+    private SettingsForm? _settingsForm;
+    private CsvExportForm? _csvForm;
+
     private void ShowSummary()
     {
-        MessageBox.Show("今日のまとめ画面は次の段階で実装します。", "WorkLog");
+        if (_summaryForm is { IsDisposed: false }) { BringToFront(_summaryForm); _summaryForm.RefreshAll(); return; }
+        _summaryForm = new SummaryForm(_tracker, _projects, _settings, _icons.AppIcon);
+        _summaryForm.SettingsRequested += (_, _) => ShowSettings();
+        _summaryForm.CsvRequested += (_, _) => ShowCsv();
+        _summaryForm.FormClosed += (_, _) => { _summaryForm = null; TrimMemory(); };
+        _summaryForm.Show();
     }
 
     private void ShowSettings()
     {
-        MessageBox.Show("設定画面は次の段階で実装します。", "WorkLog");
+        if (_settingsForm is { IsDisposed: false }) { BringToFront(_settingsForm); return; }
+        _settingsForm = new SettingsForm(_settings, _projects, _icons.AppIcon);
+        _settingsForm.FormClosed += (_, _) => { _settingsForm = null; _summaryForm?.RefreshAll(); TrimMemory(); };
+        _settingsForm.Show();
+    }
+
+    private void ShowCsv()
+    {
+        if (_csvForm is { IsDisposed: false }) { BringToFront(_csvForm); return; }
+        _csvForm = new CsvExportForm(_tracker, _icons.AppIcon);
+        _csvForm.FormClosed += (_, _) => { _csvForm = null; TrimMemory(); };
+        _csvForm.Show();
+    }
+
+    private static void BringToFront(Form f)
+    {
+        if (f.WindowState == FormWindowState.Minimized) f.WindowState = FormWindowState.Normal;
+        f.Activate();
     }
 
     /// <summary>画面を閉じた後などに、使っていないメモリを OS に返す。</summary>
@@ -176,6 +204,9 @@ public sealed class TrayApp : ApplicationContext
     {
         _timer.Stop();
         _tracker.Suspend();
+        _summaryForm?.Close();
+        _settingsForm?.Close();
+        _csvForm?.Close();
         ExitThread();
     }
 
